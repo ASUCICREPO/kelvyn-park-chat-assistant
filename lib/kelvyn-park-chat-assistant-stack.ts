@@ -53,7 +53,7 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       code: lambda.Code.fromAsset('lambda/get-response-from-bedrock'),
       handler: 'index.lambda_handler',
       environment: {
-        URL: stage.url,
+        URL: stage.callbackUrl,
         KNOWLEDGE_BASE_ID: kb.knowledgeBaseId,
       },
       timeout: cdk.Duration.seconds(300),
@@ -68,9 +68,16 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
         'bedrock-runtime:InvokeModelWithResponseStream',
         'bedrock:Retrieve',
         'bedrock:InvokeModelWithResponseStream',
-        'execute-api:ManageConnections'
+        'execute-api:ManageConnections',
+        'execute-api:Invoke'
       ],
-      resources: ['*']
+      resources: [
+        `arn:aws:bedrock:${this.region}:${this.account}:knowledge-base/${kb.knowledgeBaseId}`,
+        `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0`,
+        `arn:aws:bedrock:${this.region}:${this.account}:agent-runtime/*`,
+        `arn:aws:bedrock:${this.region}:${this.account}:*`,
+        webSocketApiArn
+      ]
     }));
 
     // web-socket-handler Lambda function
@@ -94,16 +101,13 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       }
     );
 
-    const webSockethandlerPolicy = new iam.PolicyStatement({
+    webSocketHandler.addToRolePolicy(new iam.PolicyStatement({
       actions: ['execute-api:ManageConnections'],
       resources: [webSocketApiArn],
-    });
-
-    webSocketHandler.addToRolePolicy(webSockethandlerPolicy);
-    getResponseFromBedrockLambda.addToRolePolicy(webSockethandlerPolicy);
+    }));
 
     new cdk.CfnOutput(this, 'WebSocketURL', {
-      value: stage.url,
+      value: stage.callbackUrl,
       description: 'WebSocket URL'
     });
 
