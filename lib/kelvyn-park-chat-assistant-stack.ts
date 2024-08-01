@@ -26,7 +26,7 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
-    new bedrock.S3DataSource(this, 'kp-document-datasource', {
+    const s3_data_source = new bedrock.S3DataSource(this, 'kp-document-datasource', {
       bucket: kb_bucket,
       knowledgeBase: kb,
       dataSourceName: 'kp-document-datasource',
@@ -65,6 +65,7 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
         SOURCE_BUCKET_NAME: email_bucket.bucketName,
         DESTINATION_BUCKET_NAME: kb_bucket.bucketName,
         KNOWLEDGE_BASE_ID: kb.knowledgeBaseId,
+        DATA_SOURCE_ID: s3_data_source.dataSourceId,
         MAX_RETRIES: '3',
         ENABLE_LIFECYCLE_RULE: 'true',  // Set to 'true' or 'false'
       },

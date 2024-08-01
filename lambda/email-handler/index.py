@@ -11,20 +11,22 @@ logger.setLevel(logging.INFO)
 
 # Initialize clients
 s3 = boto3.client('s3')
-bedrock = boto3.client('bedrock')
+bedrock = boto3.client('bedrock-agent')
 
 # Constants
 SOURCE_BUCKET = os.environ['SOURCE_BUCKET_NAME']
 DESTINATION_BUCKET = os.environ['DESTINATION_BUCKET_NAME']
 KNOWLEDGE_BASE_ID = os.environ['KNOWLEDGE_BASE_ID']
+DATA_SOURCE_ID = os.environ['DATA_SOURCE_ID']
 INCOMING_PREFIX = 'incoming/'
 ARCHIVE_PREFIX = 'archive/'
 ERROR_PREFIX = 'processing_errors/'
 MAX_RETRIES = int(os.environ['MAX_RETRIES'])
 ENABLE_LIFECYCLE_RULE = os.environ.get('ENABLE_LIFECYCLE_RULE', 'false').lower() == 'true'
 
-def process_email(message_key):
-    """Process a single email."""
+def process_email(message_id):
+    """Process a single email."""    
+    message_key = f"{INCOMING_PREFIX}{message_id}"
     try:
         # Retrieve the email from S3
         s3_object = s3.get_object(Bucket=SOURCE_BUCKET, Key=message_key)
@@ -58,7 +60,7 @@ def process_email(message_key):
             sync_knowledge_base()
         
         # Move the original email to the archive prefix
-        archive_key = f"{ARCHIVE_PREFIX}{message_key}"
+        archive_key = f"{ARCHIVE_PREFIX}{message_id}"
         s3.copy_object(
             Bucket=SOURCE_BUCKET,
             CopySource={'Bucket': SOURCE_BUCKET, 'Key': message_key},
@@ -67,19 +69,19 @@ def process_email(message_key):
         s3.delete_object(Bucket=SOURCE_BUCKET, Key=message_key)
         logger.info(f"Processed email and moved to archive: {archive_key}")
         
-    except ClientError as e:
-        logger.error(f"Error processing email {message_key}: {str(e)}")
+    except Exception as e:
+        logger.exception(f"Error processing email {message_key}: {str(e)}")
         # Move the problematic email to an error prefix
         try:
             s3.copy_object(
                 Bucket=SOURCE_BUCKET,
                 CopySource={'Bucket': SOURCE_BUCKET, 'Key': message_key},
-                Key=f"{ERROR_PREFIX}{message_key}"
+                Key=f"{ERROR_PREFIX}{message_id}"
             )
             s3.delete_object(Bucket=SOURCE_BUCKET, Key=message_key)
             logger.info(f"Moved problematic email to error prefix: {message_key}")
-        except ClientError as copy_error:
-            logger.error(f"Error moving problematic email: {str(copy_error)}")
+        except Exception as copy_error:
+            logger.exception(f"Error moving problematic email: {str(copy_error)}")
         raise
 
 def sync_knowledge_base():
@@ -87,26 +89,22 @@ def sync_knowledge_base():
     try:
         response = bedrock.start_ingestion_job(
             knowledgeBaseId=KNOWLEDGE_BASE_ID,
-            dataSource={
-                's3Location': {
-                    'bucketName': DESTINATION_BUCKET
-                }
-            }
+            dataSourceId=DATA_SOURCE_ID
         )
-        logger.info(f"Started knowledge base sync: {response['ingestionJobId']}")
+        logger.info(response)
+        logger.info(f"Started knowledge base sync: {response['ingestionJob']['ingestionJobId']}")
     except ClientError as e:
-        logger.error(f"Error syncing knowledge base: {str(e)}")
+        logger.exception(f"Error syncing knowledge base: {str(e)}")
 
 def lambda_handler(event, context):
     # Get the email data from the SES event
     ses_notification = event['Records'][0]['ses']
     message_id = ses_notification['mail']['messageId']
-    incoming_msg_key = f"{INCOMING_PREFIX}{message_id}"
     
     retry_count = 0
     while retry_count < MAX_RETRIES:
         try:
-            process_email(incoming_msg_key)
+            process_email(message_id)
             return {
                 'statusCode': 200,
                 'body': 'Email processed successfully'
@@ -149,6 +147,6 @@ def setup_s3_lifecycle_rule(enable=False):
         )
         logger.info(f"Set up lifecycle rules for bucket: {SOURCE_BUCKET}")
     except ClientError as e:
-        logger.error(f"Error setting up lifecycle rules: {str(e)}")
+        logger.exception(f"Error setting up lifecycle rules: {str(e)}")
 
 setup_s3_lifecycle_rule(ENABLE_LIFECYCLE_RULE)
