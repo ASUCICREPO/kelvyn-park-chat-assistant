@@ -40,16 +40,22 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       bucketName: 'kp-email-bucket',
       lifecycleRules: [
         {
-          id: 'Archive old emails',
+          id: 'Delete archived emails',
           enabled: true,
           prefix: 'archive/',
-          expiration: cdk.Duration.days(30),
+          expiration: cdk.Duration.days(7),
         },
         {
           id: 'Delete error emails',
           enabled: true,
           prefix: 'processing_errors/',
           expiration: cdk.Duration.days(7),
+        },
+        {
+            id: 'Delete stale unprocessed emails',
+            enabled: true,
+            prefix: 'incoming/',
+            expiration: cdk.Duration.days(15),
         },
       ],
       autoDeleteObjects: true,

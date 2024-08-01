@@ -131,7 +131,7 @@ def setup_s3_lifecycle_rule(enable=False):
             LifecycleConfiguration={
                 'Rules': [
                     {
-                        'ID': 'Archive old emails',
+                        'ID': 'Delete archived emails',
                         'Status': 'Enabled',
                         'Prefix': ARCHIVE_PREFIX,
                         'Expiration': {'Days': 7}  # Adjust the number of days as needed
@@ -141,7 +141,13 @@ def setup_s3_lifecycle_rule(enable=False):
                         'Status': 'Enabled',
                         'Prefix': ERROR_PREFIX,
                         'Expiration': {'Days': 7}  # Adjust the number of days as needed
-                    }
+                    },
+                    {
+                        'ID': 'Delete stale unprocessed emails',
+                        'Status': 'Enabled',
+                        'Prefix': INCOMING_PREFIX,
+                        'Expiration': {'Days': 15}  # Adjust the number of days as needed
+                    },
                 ]
             }
         )
