@@ -7,6 +7,8 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import * as sesActions from 'aws-cdk-lib/aws-ses-actions';
 import { bedrock } from '@cdklabs/generative-ai-cdk-constructs';
+import * as amplify from '@aws-cdk/aws-amplify-alpha';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 
 export class KelvynParkChatAssistantStack extends cdk.Stack {
@@ -52,10 +54,10 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
           expiration: cdk.Duration.days(7),
         },
         {
-            id: 'Delete stale unprocessed emails',
-            enabled: true,
-            prefix: 'incoming/',
-            expiration: cdk.Duration.days(15),
+          id: 'Delete stale unprocessed emails',
+          enabled: true,
+          prefix: 'incoming/',
+          expiration: cdk.Duration.days(15),
         },
       ],
       autoDeleteObjects: true,
@@ -112,7 +114,7 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
     // Add actions to the rule
     sesRule.addAction(new sesActions.S3({
       bucket: email_bucket,
-      objectKeyPrefix: 'incoming/',      
+      objectKeyPrefix: 'incoming/',
     }));
 
     sesRule.addAction(new sesActions.Lambda({
@@ -190,6 +192,62 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
         returnResponse: true
       }
     );
+
+    // GitHub personal access token stored in Secrets Manager
+    const githubToken = secretsmanager.Secret.fromSecretNameV2(this, 'GitHubToken', 'github-token');
+
+    // Create the Amplify App
+    const amplifyApp = new amplify.App(this, 'KelvynParkReactApp', {
+      sourceCodeProvider: new amplify.GitHubSourceCodeProvider({
+        owner: 'priyambansal',
+        repository: 'Kelvyn_Park_UI',
+        oauthToken: githubToken.secretValue
+      }),
+      buildSpec: cdk.aws_codebuild.BuildSpec.fromObjectToYaml({
+        version: '1.0',
+        frontend: {
+          phases: {
+            preBuild: {
+              commands: [
+                'cd frontend',
+                'npm ci'
+              ]
+            },
+            build: {
+              commands: [
+                'npm run build'
+              ]
+            }
+          },
+          artifacts: {
+            baseDirectory: 'frontend/build',
+            files: [
+              '**/*'
+            ]
+          },
+          cache: {
+            paths: [
+              'frontend/node_modules/**/*'
+            ]
+          }
+        }
+      }),
+    });
+
+    // Add environment variables
+    amplifyApp.addEnvironment('REACT_APP_WEBSOCKET_API', stage.url);
+
+    // Add a branch
+    const mainBranch = amplifyApp.addBranch('main', {
+      autoBuild: true,
+      stage: 'PRODUCTION'
+    });
+
+    // Output the Amplify App URL
+    new cdk.CfnOutput(this, 'AmplifyAppURL', {
+      value: `https://${mainBranch.branchName}.${amplifyApp.defaultDomain}`,
+      description: 'Amplify Application URL'
+    });
 
     webSocketHandler.addToRolePolicy(new iam.PolicyStatement({
       actions: ['execute-api:ManageConnections'],
