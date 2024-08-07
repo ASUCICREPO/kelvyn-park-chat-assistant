@@ -29,12 +29,11 @@ def process_email(message_id):
     message_key = f"{INCOMING_PREFIX}{message_id}"
     try:
         # Retrieve the email from S3
+        logger.info(f"Retreiving object [{message_key}] from [{SOURCE_BUCKET}]...")
         s3_object = s3.get_object(Bucket=SOURCE_BUCKET, Key=message_key)
         email_body = s3_object['Body'].read().decode('utf-8')
-        
-        # Parse the email
+        logger.info("Parsing the email...")
         msg = email.message_from_string(email_body, policy=policy.default)
-        
         attachments_added = False
         
         # Process attachments
@@ -46,31 +45,34 @@ def process_email(message_id):
             
             file_name = part.get_filename()
             if file_name:
+                logger.info(f"E-mail contains attachment with name [{file_name}]")
                 # Upload attachment to destination S3 bucket
                 s3.put_object(
                     Bucket=DESTINATION_BUCKET,
                     Key=file_name,
                     Body=part.get_payload(decode=True)
                 )
-                logger.info(f"Uploaded attachment: {file_name}")
+                logger.info(f"Uploaded attachment: [{file_name}] to bucket: [DESTINATION_BUCKET]")
                 attachments_added = True
         
         # Sync knowledge base if attachments were added
         if attachments_added:
+            logger.info("Synching Knowledge Base now...")
             sync_knowledge_base()
         
         # Move the original email to the archive prefix
         archive_key = f"{ARCHIVE_PREFIX}{message_id}"
+        logger.info("Archiving the email...")
         s3.copy_object(
             Bucket=SOURCE_BUCKET,
             CopySource={'Bucket': SOURCE_BUCKET, 'Key': message_key},
             Key=archive_key
         )
         s3.delete_object(Bucket=SOURCE_BUCKET, Key=message_key)
-        logger.info(f"Processed email and moved to archive: {archive_key}")
+        logger.info(f"Processed email [{message_key}] and moved to archive: [{archive_key}]")
         
     except Exception as e:
-        logger.exception(f"Error processing email {message_key}: {str(e)}")
+        logger.exception(f"Error processing email [{message_key}]: {str(e)}")
         # Move the problematic email to an error prefix
         try:
             s3.copy_object(
@@ -79,7 +81,7 @@ def process_email(message_id):
                 Key=f"{ERROR_PREFIX}{message_id}"
             )
             s3.delete_object(Bucket=SOURCE_BUCKET, Key=message_key)
-            logger.info(f"Moved problematic email to error prefix: {message_key}")
+            logger.info(f"Moved problematic email [{message_key}] to error prefix: [{message_key}]")
         except Exception as copy_error:
             logger.exception(f"Error moving problematic email: {str(copy_error)}")
         raise
@@ -87,6 +89,7 @@ def process_email(message_id):
 def sync_knowledge_base():
     """Sync the knowledge base."""
     try:
+        logger.info("Starting Bedrock Ingestion Job for Knowledge Base [{KNOWLEDGE_BASE_ID}], Data Source: [{DATA_SOURCE_ID}]...")
         response = bedrock.start_ingestion_job(
             knowledgeBaseId=KNOWLEDGE_BASE_ID,
             dataSourceId=DATA_SOURCE_ID
@@ -100,7 +103,7 @@ def lambda_handler(event, context):
     # Get the email data from the SES event
     ses_notification = event['Records'][0]['ses']
     message_id = ses_notification['mail']['messageId']
-    
+    logger.info(f"Received email with Message ID: [{message_id}]")
     retry_count = 0
     while retry_count < MAX_RETRIES:
         try:

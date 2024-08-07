@@ -26,7 +26,7 @@ def handle_message(event, connection_id):
         Payload=json.dumps(input)
     )
     
-    return {'statusCode': 200, 'body': 'Message processed'}
+    return {'statusCode': 200}
 
 def lambda_handler(event, context):
     route_key = event.get('requestContext', {}).get('routeKey')

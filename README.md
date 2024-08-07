@@ -1,6 +1,6 @@
 # kelvyn-park-chat-assistant
 
-A multi-lingual chat assistant for Kelvyn Park Junior & Senior School
+A multi-lingual chat assistant for Kelvyn Park Junior and Senior High School
 
 ## Pre-requisites
 1. AWS CLI (version 2.15.57 Python/3.11.8 Windows/10 exe/AMD64)

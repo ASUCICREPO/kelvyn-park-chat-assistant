@@ -5,16 +5,33 @@ import * as apigatewayv2_integrations from '@aws-cdk/aws-apigatewayv2-integratio
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ses from 'aws-cdk-lib/aws-ses';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as sesActions from 'aws-cdk-lib/aws-ses-actions';
 import { bedrock } from '@cdklabs/generative-ai-cdk-constructs';
 import * as amplify from '@aws-cdk/aws-amplify-alpha';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 
+interface KelvynParkChatAssistantStackProps extends cdk.StackProps {
+  githubToken: string;
+}
+
 export class KelvynParkChatAssistantStack extends cdk.Stack {
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: KelvynParkChatAssistantStackProps) {
     super(scope, id, props);
+
+    const stackLogGroup = new logs.LogGroup(this, 'KelvynParkChatAssistantStackLogs', {
+      logGroupName: '/aws/kelvynpark/all-services',
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.DESTROY
+    });
+
+    const s3LoggingBucket = new s3.Bucket(this, 'S3LoggingBucket', {
+      bucketName: 'kp-s3-access-logs',
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      removalPolicy: cdk.RemovalPolicy.RETAIN
+    });
 
     // Create the Bedrock knowledge base
     const kb = new bedrock.KnowledgeBase(this, 'kp-bedrock-knowledgebase', {
@@ -26,6 +43,8 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
     const kb_bucket = new s3.Bucket(this, 'kp-doc-bucket', {
       bucketName: 'kp-doc-bucket',
       removalPolicy: cdk.RemovalPolicy.RETAIN,
+      serverAccessLogsBucket: s3LoggingBucket,
+      serverAccessLogsPrefix: 'kp-bucket-logs/'
     });
 
     const s3_data_source = new bedrock.S3DataSource(this, 'kp-document-datasource', {
@@ -62,6 +81,8 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       ],
       autoDeleteObjects: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      serverAccessLogsBucket: s3LoggingBucket,
+      serverAccessLogsPrefix: 'kp-bucket-logs/'
     });
 
     // email-handler Lambda function
@@ -69,6 +90,8 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('lambda/email-handler'),
       handler: 'index.lambda_handler',
+      memorySize: 1024,
+      timeout: cdk.Duration.seconds(900),
       environment: {
         SOURCE_BUCKET_NAME: email_bucket.bucketName,
         DESTINATION_BUCKET_NAME: kb_bucket.bucketName,
@@ -129,15 +152,17 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
     });
 
     // WebSocketApi
-    const webSocketApi = new apigatewayv2.WebSocketApi(this, 'kp-web-socket-api');
+    const webSocketApi = new apigatewayv2.WebSocketApi(this, 'kp-web-socket-api', {
+      apiName: 'kp-web-socket-api',
+    });
 
-    const stage = new apigatewayv2.WebSocketStage(this, 'kp-web-socket-stage', {
+    const webSocketStage = new apigatewayv2.WebSocketStage(this, 'kp-web-socket-stage', {
       webSocketApi,
       stageName: 'production',
       autoDeploy: true,
     });
 
-    const webSocketApiArn = `arn:aws:execute-api:${this.region}:${this.account}:${webSocketApi.apiId}/${stage.stageName}/POST/@connections/*`;
+    const webSocketApiArn = `arn:aws:execute-api:${this.region}:${this.account}:${webSocketApi.apiId}/${webSocketStage.stageName}/POST/@connections/*`;
 
     // get-response-from-bedrock Lambda function
     const getResponseFromBedrockLambda = new lambda.Function(this, 'kp-get-response-from-bedrock', {
@@ -145,7 +170,7 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       code: lambda.Code.fromAsset('lambda/get-response-from-bedrock'),
       handler: 'index.lambda_handler',
       environment: {
-        URL: stage.callbackUrl,
+        URL: webSocketStage.callbackUrl,
         KNOWLEDGE_BASE_ID: kb.knowledgeBaseId,
       },
       timeout: cdk.Duration.seconds(300),
@@ -193,14 +218,23 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       }
     );
 
+    webSocketHandler.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['execute-api:ManageConnections'],
+      resources: [webSocketApiArn],
+    }));
+
     // GitHub personal access token stored in Secrets Manager
-    const githubToken = secretsmanager.Secret.fromSecretNameV2(this, 'GitHubToken', 'github-token');
+    const githubToken = new secretsmanager.Secret(this, 'GitHubToken', {
+      secretName: 'kp-github-token',
+      description: 'GitHub Personal Access Token for Amplify',
+      secretStringValue: cdk.SecretValue.unsafePlainText(props.githubToken)
+    });
 
     // Create the Amplify App
     const amplifyApp = new amplify.App(this, 'KelvynParkReactApp', {
       sourceCodeProvider: new amplify.GitHubSourceCodeProvider({
-        owner: 'priyambansal',
-        repository: 'Kelvyn_Park_UI',
+        owner: 'ASUCICREPO',
+        repository: 'MultilingualChatbot',
         oauthToken: githubToken.secretValue
       }),
       buildSpec: cdk.aws_codebuild.BuildSpec.fromObjectToYaml({
@@ -235,7 +269,7 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
     });
 
     // Add environment variables
-    amplifyApp.addEnvironment('REACT_APP_WEBSOCKET_API', stage.url);
+    amplifyApp.addEnvironment('REACT_APP_WEBSOCKET_API', webSocketStage.url);
 
     // Add a branch
     const mainBranch = amplifyApp.addBranch('main', {
@@ -243,19 +277,11 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       stage: 'PRODUCTION'
     });
 
-    // Output the Amplify App URL
-    new cdk.CfnOutput(this, 'AmplifyAppURL', {
-      value: `https://${mainBranch.branchName}.${amplifyApp.defaultDomain}`,
-      description: 'Amplify Application URL'
-    });
-
-    webSocketHandler.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['execute-api:ManageConnections'],
-      resources: [webSocketApiArn],
-    }));
+    // Grant Amplify permission to read the secret
+    githubToken.grantRead(amplifyApp);
 
     new cdk.CfnOutput(this, 'WebSocketURL', {
-      value: stage.callbackUrl,
+      value: webSocketStage.callbackUrl,
       description: 'WebSocket URL'
     });
 
@@ -267,6 +293,21 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'SESRuleSetName', {
       value: sesRuleSet.receiptRuleSetName!,
       description: 'The name of the SES Receipt Rule Set',
+    });
+
+    new cdk.CfnOutput(this, 'GitHubTokenSecretArn', {
+      value: githubToken.secretArn,
+      description: 'ARN of the gitHub Token Secret',
+    });
+
+    new cdk.CfnOutput(this, 'AmplifyAppURL', {
+      value: `https://${mainBranch.branchName}.${amplifyApp.defaultDomain}`,
+      description: 'Amplify Application URL'
+    });
+
+    new cdk.CfnOutput(this, 'LogInsightsQueryLink', {
+      value: `https://${this.region}.console.aws.amazon.com/cloudwatch/home?region=${this.region}#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~unit~'seconds~editorString~'fields*20*40timestamp*2c*20*40message*0a*7c*20sort*20*40timestamp*20desc*0a*7c*20limit*2020~isLiveTail~false~source~(~'*2faws*2fkelvynpark*2fall-services))`,
+      description: 'CloudWatch Logs Insights Query Link'
     });
   }
 }
