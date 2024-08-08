@@ -66,8 +66,6 @@ def lambda_handler(event, context):
         print(f"Finding in Knowledge Base with ID: [{kb_id}]...")
         query = {"text": prompt}
         kb_response = agent.retrieve(knowledgeBaseId=kb_id, retrievalQuery=query)
-        print(f"Received response from Knowledge Base: [{kb_response}]")
-        
         print(f"Updating the prompt for LLM...")
         rag_info = "RELEVENT SCHOOL INFORMATION:\n"
         for response in kb_response["retrievalResults"]:

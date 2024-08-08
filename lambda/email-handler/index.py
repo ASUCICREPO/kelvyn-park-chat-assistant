@@ -23,6 +23,8 @@ ARCHIVE_PREFIX = 'archive/'
 ERROR_PREFIX = 'processing_errors/'
 MAX_RETRIES = int(os.environ['MAX_RETRIES'])
 ENABLE_LIFECYCLE_RULE = os.environ.get('ENABLE_LIFECYCLE_RULE', 'false').lower() == 'true'
+HANDBOOK_FILE = "HANDBOOK - Students & Parents"
+NEWSLETTER_FILE = "Pencil It In"
 
 def process_email(message_id):
     """Process a single email."""    
@@ -47,12 +49,17 @@ def process_email(message_id):
             if file_name:
                 logger.info(f"E-mail contains attachment with name [{file_name}]")
                 # Upload attachment to destination S3 bucket
+                file_name_key=file_name
+                if HANDBOOK_FILE in file_name:
+                    file_name_key = HANDBOOK_FILE
+                elif NEWSLETTER_FILE in file_name:
+                    file_name_key = NEWSLETTER_FILE
                 s3.put_object(
                     Bucket=DESTINATION_BUCKET,
-                    Key=file_name,
+                    Key=file_name_key,
                     Body=part.get_payload(decode=True)
                 )
-                logger.info(f"Uploaded attachment: [{file_name}] to bucket: [DESTINATION_BUCKET]")
+                logger.info(f"Uploaded attachment: [{file_name}] to bucket: [{DESTINATION_BUCKET}] with name: [{file_name_key}]")
                 attachments_added = True
         
         # Sync knowledge base if attachments were added
