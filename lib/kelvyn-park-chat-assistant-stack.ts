@@ -22,18 +22,6 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: KelvynParkChatAssistantStackProps) {
     super(scope, id, props);
 
-    const stackLogGroup = new logs.LogGroup(this, 'KelvynParkChatAssistantStackLogs', {
-      logGroupName: '/aws/kelvynpark/all-services',
-      retention: logs.RetentionDays.ONE_MONTH,
-      removalPolicy: cdk.RemovalPolicy.DESTROY
-    });
-
-    const s3LoggingBucket = new s3.Bucket(this, 'S3LoggingBucket', {
-      bucketName: 'kp-s3-access-logs',
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      removalPolicy: cdk.RemovalPolicy.RETAIN
-    });
-
     // Create the Bedrock knowledge base
     const kb = new bedrock.KnowledgeBase(this, 'kp-bedrock-knowledgebase', {
       embeddingsModel: bedrock.BedrockFoundationModel.TITAN_EMBED_TEXT_V1,
@@ -44,8 +32,6 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
     const kb_bucket = new s3.Bucket(this, 'kp-doc-bucket', {
       bucketName: 'kp-doc-bucket',
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      serverAccessLogsBucket: s3LoggingBucket,
-      serverAccessLogsPrefix: 'kp-bucket-logs/'
     });
 
     const s3_data_source = new bedrock.S3DataSource(this, 'kp-document-datasource', {
@@ -82,8 +68,6 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       ],
       autoDeleteObjects: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      serverAccessLogsBucket: s3LoggingBucket,
-      serverAccessLogsPrefix: 'kp-bucket-logs/'
     });
 
     // email-handler Lambda function
