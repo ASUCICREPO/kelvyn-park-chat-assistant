@@ -7,6 +7,7 @@ const app = new cdk.App();
 
 // Retrieve the GitHub token from command line parameters
 const githubToken = app.node.tryGetContext('githubToken');
+const domain = app.node.tryGetContext('domain');
 
 if (!githubToken) {
   throw new Error('GitHub token must be provided. Use -c githubToken=<your-token> when deploying.');
@@ -18,4 +19,5 @@ new KelvynParkChatAssistantStack(app, 'KelvynParkChatAssistantStack', {
     region: process.env.CDK_DEFAULT_REGION 
   },
   githubToken: githubToken,
+  domain: domain,
 });

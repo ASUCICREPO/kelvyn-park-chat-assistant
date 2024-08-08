@@ -53,6 +53,8 @@ This chatbot is implemented using Amazon Bedrock Knowledge Base with Claude 3 Ha
 4. Typescript 3.8 or later
 5. IDE like VSCode (recommended)
 6. AWS CDK Toolkit (version 2.148.1)
+7. GitHub access token with repo access
+8. AWS SES domain identity
 
 ## Set up on local machine
 
@@ -64,7 +66,7 @@ This chatbot is implemented using Amazon Bedrock Knowledge Base with Claude 3 Ha
 ```bash {"id":"01HTZEMSE9DJB4D5JMBQWRGP9B"}
   npm install
 ```
-3. Deploy to the default environment
+3. Deploy to the default environment with the GitHub token and SES domain identity name values in context variables.
 ```bash {"id":"01HTZEMSE9DJB4D5JMBQWRGP9B"}
-  cdk deploy
+  cdk deploy -c githubtoken=<your_github_access_token> -c domain=<your_domain>
 ```

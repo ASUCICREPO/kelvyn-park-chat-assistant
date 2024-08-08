@@ -14,6 +14,7 @@ import { Construct } from 'constructs';
 
 interface KelvynParkChatAssistantStackProps extends cdk.StackProps {
   githubToken: string;
+  domain: string;
 }
 
 export class KelvynParkChatAssistantStack extends cdk.Stack {
@@ -129,7 +130,7 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
 
     // Create SES Receipt Rule
     const sesRule = sesRuleSet.addRule('kp-process-incoming-email', {
-      recipients: ["asucic.com"], // This will apply to all emails @yourdomain.com
+      recipients: [props.domain],
       scanEnabled: true,
       tlsPolicy: ses.TlsPolicy.REQUIRE,
     });
