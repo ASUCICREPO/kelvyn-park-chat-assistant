@@ -48,13 +48,14 @@ This chatbot is implemented using Amazon Bedrock Knowledge Base with Claude 3 Ha
 ## Pre-requisites
 
 1. AWS CLI (version 2.15.57 Python/3.11.8 Windows/10 exe/AMD64)
-2. AWS Account with Administrative User configured
+2. AWS Account with Administrative User configured, region us-west-2
 3. Node.js (version 20.15.1)
 4. Typescript 3.8 or later
 5. IDE like VSCode (recommended)
 6. AWS CDK Toolkit (version 2.148.1)
 7. GitHub access token with repo access
 8. AWS SES domain identity
+9. Claude 3 Haiku model in Amazon Bedrock
 
 ## Set up on local machine
 
