@@ -63,11 +63,15 @@ This chatbot is implemented using Amazon Bedrock Knowledge Base with Claude 3 Ha
 ```bash {"id":"01HTZEMSE9DJB4D5JMBQWRGP9B"}
   git clone https://github.com/ASUCICREPO/kelvyn-park-chat-assistant.git
 ```
-2. Install dependencies
+2. Go into the repository directory
+```bash {"id":"01HTZEMSE9DJB4D5JMBQWRGP9B"}
+  cd kelvyn-park-chat-assistant
+```
+3. Install dependencies
 ```bash {"id":"01HTZEMSE9DJB4D5JMBQWRGP9B"}
   npm install
 ```
-3. Deploy to the default environment with the GitHub token and SES domain identity name values in context variables.
+4. Deploy to the default environment with the GitHub token and SES domain identity name values in context variables.
 ```bash {"id":"01HTZEMSE9DJB4D5JMBQWRGP9B"}
   cdk deploy -c githubtoken=<your_github_access_token> -c domain=<your_domain>
 ```
