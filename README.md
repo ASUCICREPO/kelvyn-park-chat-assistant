@@ -48,7 +48,6 @@ This chatbot is implemented using Amazon Bedrock Knowledge Base with Claude 3 Ha
 ## Pre-requisites
 
 1. AWS CLI (version 2.15.57 Python/3.11.8 Windows/10 exe/AMD64)
-https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
 2. AWS Account with Administrative User configured, region us-west-2
 3. Node.js (version 20.15.1)
 4. Typescript 3.8 or later
@@ -77,3 +76,6 @@ https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
 ```bash {"id":"01HTZEMSE9DJB4D5JMBQWRGP9B"}
   cdk deploy -c githubtoken=<your_github_access_token> -c domain=<your_domain>
 ```
+5. In your AWS Account, go to Amazon Bedrock->Knowledge Base-> <Your Kelvyn Park Knowledge Base> -> Data Sources -> Add. Select Web Crawler->Next. In Data Source Name field enter "kp-website-datasource" and in Source URLs enter "https://kphermosa.org/". Select Website Domain Range in Synch Scope as "Default" and go forward to Add the data source to your knowledge base. Select the newly added datasource and run synch job.
+6. Go to AWS Amplify and got to your amplify app. Run deployment on the "main" branch.
+7. Go to the SES Rule set and verify that it is set to "Active".

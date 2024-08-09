@@ -5,7 +5,6 @@ import * as apigatewayv2_integrations from '@aws-cdk/aws-apigatewayv2-integratio
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ses from 'aws-cdk-lib/aws-ses';
-import * as logs from 'aws-cdk-lib/aws-logs';
 import * as sesActions from 'aws-cdk-lib/aws-ses-actions';
 import { bedrock } from '@cdklabs/generative-ai-cdk-constructs';
 import * as amplify from '@aws-cdk/aws-amplify-alpha';
@@ -30,7 +29,6 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
 
     // Create the S3 bucket to house our data
     const kb_bucket = new s3.Bucket(this, 'kp-doc-bucket', {
-      bucketName: 'kp-doc-bucket',
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -45,7 +43,6 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
 
     // Create the S3 bucket to house the incoming emails
     const email_bucket = new s3.Bucket(this, 'kp-email-bucket', {
-      bucketName: 'kp-email-bucket',
       lifecycleRules: [
         {
           id: 'Delete archived emails',
