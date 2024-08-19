@@ -11,7 +11,7 @@ This chatbot is implemented using Amazon Bedrock Knowledge Base with Claude 3 Ha
 ### Key Components:
 
 1. **Data Sources**:
-   - Amazon S3: Handles PDF files like handbooks and newsletters.
+   - Amazon S3: Handles PDF and XML files like handbooks and newsletter summary.
    - Web Crawler: Extracts information from the school website.
 
 2. **Automatic Data Ingestion**:
@@ -22,7 +22,8 @@ This chatbot is implemented using Amazon Bedrock Knowledge Base with Claude 3 Ha
    - OpenSearch Embeddings are used to enhance search capabilities.
 
 4. **Language Model**:
-   - Claude 3 Haiku serves as the foundation model for natural language processing.
+   - Claude 3 Haiku serves as the foundation model for natural language processing to understand user queries and generate responses.
+   - Cluade 3.5 Sonnet is used to create a rich summary of the school newsletters in XML format which is used as one of the data sources for the Bedrock Knowledge Base.
 
 5. **User Interface**:
    - Web interface created using React.
@@ -35,7 +36,7 @@ This chatbot is implemented using Amazon Bedrock Knowledge Base with Claude 3 Ha
 
 1. Upload Client sends an email with PDF to Simple Email Service.
 2. Email is saved in S3 Bucket for emails.
-3. Email Handler Lambda extracts PDF.
+3. Email Handler Lambda extracts PDF and generates its summary using Claude 3.5 Sonnet.
 4. Content is uploaded to S3 Data Source.
 5. This triggers ingestion into Bedrock Knowledge Base.
 6. Embeddings are stored in OpenSearch.
@@ -56,7 +57,7 @@ This chatbot is implemented using Amazon Bedrock Knowledge Base with Claude 3 Ha
 7. AWS CDK Toolkit (version 2.148.1)
 8. GitHub access token with repo access
 9. AWS SES domain identity
-10. Claude 3 Haiku model in Amazon Bedrock
+10. Claude 3 Haiku and Claude 3.5 Sonnet models in Amazon Bedrock
 
 ## Set up on local machine
 
