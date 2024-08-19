@@ -72,8 +72,8 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('lambda/email-handler'),
       handler: 'index.lambda_handler',
-      memorySize: 1024,
-      timeout: cdk.Duration.seconds(900),
+      memorySize: 2048,
+      timeout: cdk.Duration.minutes(15),
       environment: {
         SOURCE_BUCKET_NAME: email_bucket.bucketName,
         DESTINATION_BUCKET_NAME: kb_bucket.bucketName,
@@ -85,7 +85,16 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
     })
 
     email_bucket.grantReadWrite(emailHandler);
-    kb_bucket.grantWrite(emailHandler);
+    kb_bucket.grantReadWrite(emailHandler);
+
+    // Add Textract permissions to the Lambda function's role
+    emailHandler.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'textract:StartDocumentTextDetection',
+        'textract:GetDocumentTextDetection',
+      ],
+      resources: ['*'],
+    }));
 
     // Additional permissions for S3 lifecycle management and SES
     emailHandler.addToRolePolicy(new iam.PolicyStatement({
@@ -103,6 +112,24 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
         `arn:aws:bedrock:${this.region}:${this.account}:*`,
       ],
     }));
+
+    emailHandler.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'bedrock:InvokeModel',
+        'bedrock-runtime:InvokeModel',
+      ],
+      resources: [
+        `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0`,
+        `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0`,
+      ],
+    }));
+
+    const bedrockPolicy = new iam.PolicyStatement({
+      actions: ['bedrock:*'],
+      resources: ['*'],
+    });
+
+    emailHandler.addToRolePolicy(bedrockPolicy);
 
     // Create SES Receipt Rule Set
     const sesRuleSet = new ses.ReceiptRuleSet(this, 'kp-email-receipt-rule-set', {
@@ -262,9 +289,24 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
     // Grant Amplify permission to read the secret
     githubToken.grantRead(amplifyApp);
 
-    new cdk.CfnOutput(this, 'WebSocketURL', {
-      value: webSocketStage.callbackUrl,
-      description: 'WebSocket URL'
+    new cdk.CfnOutput(this, 'GitHubTokenSecretArn', {
+      value: githubToken.secretArn,
+      description: 'ARN of the gitHub Token Secret',
+    });
+
+    new cdk.CfnOutput(this, 'SESRuleSetName', {
+      value: sesRuleSet.receiptRuleSetName,
+      description: 'The name of the SES Receipt Rule Set',
+    });
+
+    new cdk.CfnOutput(this, 'EmailBucketName', {
+      value: email_bucket.bucketName,
+      description: 'Email S3 Bucket Name',
+    });
+
+    new cdk.CfnOutput(this, 'DocumentBucketName', {
+      value: kb_bucket.bucketName,
+      description: 'Document S3 Bucket Name',
     });
 
     new cdk.CfnOutput(this, 'KnowledgeBaseId', {
@@ -272,24 +314,34 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
       description: 'Bedrock Knowledge Base ID'
     });
 
-    new cdk.CfnOutput(this, 'SESRuleSetName', {
-      value: sesRuleSet.receiptRuleSetName!,
-      description: 'The name of the SES Receipt Rule Set',
+    new cdk.CfnOutput(this, 'S3DataSourceId', {
+      value: s3_data_source.dataSourceId,
+      description: 'S3 Data Source ID',
     });
 
-    new cdk.CfnOutput(this, 'GitHubTokenSecretArn', {
-      value: githubToken.secretArn,
-      description: 'ARN of the gitHub Token Secret',
+    new cdk.CfnOutput(this, 'EmailHandlerLambdaName', {
+      value: emailHandler.functionName,
+      description: 'Email Handler Lambda Function Name'
+    });
+
+    new cdk.CfnOutput(this, 'WebSocketHandlerLambdaName', {
+      value: webSocketHandler.functionName,
+      description: 'Web Socket Handler Lambda Function Name'
+    });
+
+    new cdk.CfnOutput(this, 'GetResponseFromBedrockLambdaName', {
+      value: getResponseFromBedrockLambda.functionName,
+      description: 'Get Response From Bedrock Lambda Function Name'
+    });
+
+    new cdk.CfnOutput(this, 'WebSocketURL', {
+      value: webSocketStage.callbackUrl,
+      description: 'WebSocket URL'
     });
 
     new cdk.CfnOutput(this, 'AmplifyAppURL', {
       value: `https://${mainBranch.branchName}.${amplifyApp.defaultDomain}`,
       description: 'Amplify Application URL'
-    });
-
-    new cdk.CfnOutput(this, 'LogInsightsQueryLink', {
-      value: `https://${this.region}.console.aws.amazon.com/cloudwatch/home?region=${this.region}#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~unit~'seconds~editorString~'fields*20*40timestamp*2c*20*40message*0a*7c*20sort*20*40timestamp*20desc*0a*7c*20limit*2020~isLiveTail~false~source~(~'*2faws*2fkelvynpark*2fall-services))`,
-      description: 'CloudWatch Logs Insights Query Link'
     });
   }
 }
