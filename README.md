@@ -2,7 +2,7 @@
 
 A multi-lingual chat assistant for Kelvyn Park Junior and Senior High School that supports English and Spanish.
 
-![Architecture Diagram](docs/architecture.png)
+![Architecture Diagram](docs/architecture.jpg)
 
 ## Overview
 
