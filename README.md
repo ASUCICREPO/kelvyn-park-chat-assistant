@@ -80,3 +80,11 @@ This chatbot is implemented using Amazon Bedrock Knowledge Base with Claude 3 Ha
 5. In your AWS Account, go to Amazon Bedrock->Knowledge Base-> <Your Kelvyn Park Knowledge Base> -> Data Sources -> Add. Select Web Crawler->Next. In Data Source Name field enter "kp-website-datasource" and in Source URLs enter "https://kphermosa.org/". Select Website Domain Range in Synch Scope as "Default" and go forward to Add the data source to your knowledge base. Select the newly added datasource and run synch job.
 6. Go to AWS Amplify and got to your amplify app. Run deployment on the "main" branch.
 7. Go to the SES Rule set and verify that it is set to "Active".
+
+## Credits
+
+Developer: Priyam Bansal, Aryan Khanna
+
+Architect: Arun Arunachalam
+
+This project is designed and developed with guidance and support from the ASU Cloud Innovation Center.
