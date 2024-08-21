@@ -281,7 +281,7 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
     amplifyApp.addEnvironment('REACT_APP_WEBSOCKET_API', webSocketStage.url);
 
     // Add a branch
-    const mainBranch = amplifyApp.addBranch('main', {
+    const mainBranch = amplifyApp.addBranch('release', {
       autoBuild: true,
       stage: 'PRODUCTION'
     });
