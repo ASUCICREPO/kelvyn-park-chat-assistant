@@ -243,7 +243,7 @@ export class KelvynParkChatAssistantStack extends cdk.Stack {
     const amplifyApp = new amplify.App(this, 'KelvynParkReactApp', {
       sourceCodeProvider: new amplify.GitHubSourceCodeProvider({
         owner: 'ASUCICREPO',
-        repository: 'MultilingualChatbot',
+        repository: 'kelvyn-park-chat-assistant',
         oauthToken: githubToken.secretValue
       }),
       buildSpec: cdk.aws_codebuild.BuildSpec.fromObjectToYaml({
